@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>寻花令 · 不限次数，逐字寻一句诗</title>
+<meta name="description" content="寻花令：五言、七言、混合三入口，逐字提示正位、含字与排除，不限猜测次数。题库取自小学、初中、高中教材诗词，范围可自选。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23a83a2b'/%3E%3Ctext x='32' y='45' font-size='40' text-anchor='middle' fill='%23f4eee1' font-family='serif'%3E令%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#f4eee1;
+  --paper-deep:#eae1cd;
+  --paper-edge:#dccfb4;
+  --ink:#241f1a;
+  --ink-soft:#5f574b;
+  --ink-faint:#8d8578;
+  --line:#cdc09f;
+  --cinnabar:#a83a2b;
+  --cinnabar-deep:#8a2c20;
+  --moss:#3c5a49;
+  --ochre:#b58a45;
+  --dust:#b6ad9c;
+  --dust-line:#a09786;
+  --serif:"Songti SC","STSong","SimSun","Noto Serif CJK SC","Source Han Serif SC",serif;
+  --kai:"Kaiti SC","STKaiti","KaiTi","楷体","Noto Serif CJK SC",serif;
+  --tile-h:46px;
+  --radius:3px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:var(--serif);line-height:1.6;min-height:100vh;overflow-x:hidden;
+}
+.grain{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.3'/%3E%3C/svg%3E");
+  opacity:.35;mix-blend-mode:multiply;
+}
+.vignette{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 50% 0%,rgba(255,252,246,.55) 0%,rgba(255,252,246,0) 55%,rgba(120,104,78,.14) 100%);
+}
+.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,28px) 34px}
+
+/* ===== 顶部 ===== */
+.top{
+  display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end;justify-content:space-between;
+  padding-bottom:14px;border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.seal{
+  flex:0 0 auto;width:44px;height:44px;display:grid;place-items:center;
+  background:var(--cinnabar);color:#fbf6ea;font-family:var(--kai);font-size:26px;line-height:1;
+  border-radius:2px;box-shadow:inset 0 0 0 2px rgba(251,246,234,.4),0 2px 0 rgba(138,44,32,.35);
+  transform:rotate(-1.5deg);
+}
+.brand h1{margin:0;font-family:var(--kai);font-weight:600;font-size:clamp(28px,5.4vw,44px);letter-spacing:.14em;line-height:1.05}
+.brand .eyebrow{margin:2px 0 0;font-size:12.5px;letter-spacing:.12em;color:var(--ink-soft)}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);
+  font-family:var(--serif);font-size:14px;padding:0 14px;height:38px;min-width:44px;border-radius:2px;
+  cursor:pointer;letter-spacing:.08em;transition:background .16s,color .16s,border-color .16s;
+}
+.chip:hover{border-color:var(--ink-soft);background:rgba(36,31,26,.05)}
+.chip:focus-visible{outline:2px solid var(--cinnabar);outline-offset:2px}
+
+/* ===== 三入口 ===== */
+.typebar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.type-chip{
+  appearance:none;cursor:pointer;text-align:left;padding:9px 12px 10px;
+  border:1px solid var(--line);border-radius:2px;background:rgba(255,253,247,.45);
+  font-family:var(--serif);color:var(--ink);
+  display:flex;flex-direction:column;gap:2px;
+  transition:background .16s,border-color .16s,color .16s;
+}
+.type-chip .tn{font-family:var(--kai);font-size:17px;letter-spacing:.18em;line-height:1.3}
+.type-chip .td{font-size:11px;color:var(--ink-faint);letter-spacing:.06em}
+.type-chip:hover{border-color:var(--ink-soft);background:#fffdf7}
+.type-chip.active{background:var(--ink);border-color:var(--ink);color:#f6f0e4}
+.type-chip.active .td{color:#c9c0ae}
+
+/* ===== 主体 ===== */
+.main{display:grid;gap:20px;grid-template-columns:minmax(0,1fr);margin-top:18px}
+@media(min-width:920px){.main{grid-template-columns:minmax(0,1fr) 300px;gap:28px;align-items:start}}
+.main > *{min-width:0}
+
+.meta{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;
+  font-size:12.5px;color:var(--ink-soft);letter-spacing:.05em;padding-bottom:8px;
+}
+.meta .mode-name{font-family:var(--kai);font-size:15px;color:var(--ink);letter-spacing:.1em}
+.meta .poolinfo{font-size:11.5px;color:var(--ink-faint)}
+.meta .tries{margin-left:auto;font-variant-numeric:tabular-nums}
+.meta .tries b{color:var(--cinnabar);font-family:var(--kai);font-size:17px;margin:0 2px}
+
+.board-wrap{
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  padding:12px 0 14px;max-height:min(48vh,440px);min-height:clamp(130px,19vh,210px);
+  overflow-y:auto;scrollbar-width:thin;container-type:inline-size;
+  display:flex;flex-direction:column;
+}
+.board{display:flex;flex-direction:column;gap:10px;flex:1 1 auto;min-height:0}
+.board-empty{
+  flex:1 1 auto;min-height:118px;display:grid;place-items:center;text-align:center;
+  color:var(--ink-faint);font-family:var(--kai);font-size:clamp(13px,1.1vw,15px);letter-spacing:.14em;line-height:2.1;
+  border:1px dashed var(--line);border-radius:var(--radius);padding:26px 14px;
+}
+.guess{display:flex;flex-direction:column;gap:4px}
+.guess-meta{
+  display:flex;gap:12px;justify-content:center;font-size:11px;color:var(--ink-faint);
+  letter-spacing:.08em;font-variant-numeric:tabular-nums;
+}
+.guess-meta .hit{color:var(--moss)}
+.guess-meta .near{color:#96702f}
+.line{display:flex;gap:3px;max-width:660px;margin:0 auto;width:100%;justify-content:center}
+
+.tile{
+  flex:1 1 0;min-width:0;max-width:48px;height:var(--tile-h);
+  display:grid;place-items:center;
+  font-size:16px;font-size:clamp(10px,3.1cqw,20px);
+  border:1px solid var(--paper-edge);background:#faf6ec;color:var(--ink);
+  border-radius:var(--radius);user-select:none;
+}
+.tile.ghost{border-style:dashed;background:transparent;color:var(--ink-faint)}
+.tile.exact{background:var(--moss);border-color:var(--moss);color:#f4eee1}
+.tile.near{background:var(--ochre);border-color:#a67c37;color:#221d16}
+.tile.miss{background:var(--dust);border-color:var(--dust-line);color:#332e27}
+.tile.flip{animation:flip .32s cubic-bezier(.3,.7,.3,1) both}
+@keyframes flip{
+  0%{transform:rotateX(0) scale(1)}
+  45%{transform:rotateX(90deg) scale(.95)}
+  100%{transform:rotateX(0) scale(1)}
+}
+
+/* ===== 输入 ===== */
+.entry{margin-top:14px;min-width:0;container-type:inline-size}
+.preview{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.preview .line{opacity:.9}
+.entry form{display:flex;gap:8px;align-items:stretch}
+.entry input{
+  flex:1 1 auto;min-width:0;font-family:var(--serif);font-size:17px;color:var(--ink);
+  background:rgba(255,253,247,.7);border:1px solid var(--line);border-radius:2px;
+  padding:0 12px;height:48px;letter-spacing:.06em;
+}
+.entry input::placeholder{color:#a49b8a;font-size:14px;letter-spacing:.04em}
+.entry input:focus{outline:none;border-color:var(--ink-soft);box-shadow:0 0 0 2px rgba(168,58,43,.16)}
+.entry button.submit{
+  flex:0 0 auto;height:48px;padding:0 18px;min-width:78px;
+  font-family:var(--kai);font-size:16px;letter-spacing:.18em;
+  color:#f7f1e5;background:var(--cinnabar);border:1px solid var(--cinnabar-deep);border-radius:2px;cursor:pointer;
+}
+.entry button.submit:hover{background:var(--cinnabar-deep)}
+.counter{display:flex;justify-content:space-between;gap:10px;margin-top:7px;font-size:11.5px;color:var(--ink-faint);letter-spacing:.04em}
+.counter .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.counter .num.full{color:var(--moss)}
+
+.hintbox{
+  margin-top:12px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;
+  border-left:2px solid var(--paper-edge);padding-left:10px;font-size:12.5px;color:var(--ink-soft);
+}
+.hint-text{font-family:var(--kai);font-size:13.5px;color:var(--ink);min-width:0}
+.hint-acts{display:flex;gap:4px;flex-wrap:wrap}
+.linkbtn{
+  appearance:none;background:none;border:none;padding:8px 6px;min-height:36px;
+  font-family:var(--serif);font-size:12.5px;color:var(--cinnabar);cursor:pointer;
+  letter-spacing:.05em;text-decoration:underline;text-underline-offset:3px;
+}
+.linkbtn:hover{color:var(--cinnabar-deep)}
+.linkbtn.muted{color:var(--ink-soft)}
+.linkbtn:disabled{opacity:.45;cursor:default;text-decoration:none}
+
+/* 智能推荐 */
+.suggest{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:9px 0 2px}
+.suggest:empty{display:none}
+.sug-label{font-size:11.5px;color:var(--ink-faint);letter-spacing:.1em}
+.sug{
+  appearance:none;cursor:pointer;font-family:var(--kai);font-size:14px;letter-spacing:.05em;
+  border:1px solid #c9bb9c;background:#fffdf7;color:var(--ink);padding:7px 10px;border-radius:2px;
+  min-height:36px;line-height:1.25;
+}
+.sug:hover{border-color:var(--cinnabar);color:var(--cinnabar-deep)}
+
+/* 全篇 */
+.fullwrap{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+.fullwrap summary{
+  cursor:pointer;font-size:12.5px;letter-spacing:.08em;color:var(--ink-soft);
+  list-style:none;min-height:32px;display:flex;align-items:center;gap:6px;
+}
+.fullwrap summary::-webkit-details-marker{display:none}
+.fullwrap summary::before{content:"＋";color:var(--cinnabar);font-family:var(--kai)}
+.fullwrap[open] summary::before{content:"－"}
+.fullpoem{margin:8px 0 0;font-family:var(--kai);font-size:14.5px;line-height:1.95;color:var(--ink-soft);letter-spacing:.04em}
+.fullpoem b{color:var(--ink);font-weight:600;border-bottom:2px solid rgba(168,58,43,.35)}
+
+/* ===== 字表 ===== */
+.chars{border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,253,247,.5);padding:13px 13px 8px}
+.chars-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.chars-head h2{margin:0;font-family:var(--kai);font-weight:600;font-size:18px;letter-spacing:.12em}
+.chars-head .stat{font-size:11px;color:var(--ink-faint);letter-spacing:.03em;text-align:right}
+.char-summary{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-faint);margin:6px 0 8px}
+.char-summary i{font-style:normal;font-weight:600;font-variant-numeric:tabular-nums}
+.char-tools{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.char-tools input{
+  flex:1 1 92px;min-width:0;height:32px;font-size:14px;font-family:var(--serif);
+  border:1px solid var(--line);border-radius:2px;background:#faf6ec;color:var(--ink);padding:0 8px;
+}
+.char-tools input:focus{outline:none;border-color:var(--ink-soft)}
+.toggle{
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:0 0 auto;
+  font-size:12.5px;color:var(--ink-soft);cursor:pointer;user-select:none;
+  height:32px;padding:0 9px;border:1px solid var(--line);border-radius:2px;background:#faf6ec;
+}
+.toggle input{accent-color:var(--cinnabar);margin:0}
+.char-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:3px;
+  max-height:300px;overflow-y:auto;padding-right:2px;scrollbar-width:thin;
+  -webkit-mask-image:linear-gradient(#000 92%,rgba(0,0,0,.15));mask-image:linear-gradient(#000 92%,rgba(0,0,0,.15));
+}
+.cc{
+  aspect-ratio:1/1;display:grid;place-items:center;font-size:14px;
+  border:1px solid #e0d6c0;border-radius:2px;background:#faf6ec;color:var(--ink-soft);user-select:none;
+}
+.cc.exact{background:var(--moss);border-color:var(--moss);color:#f4eee1}
+.cc.near{background:var(--ochre);border-color:#a67c37;color:#221d16}
+.cc.miss{background:var(--dust);border-color:var(--dust-line);color:#332e27}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;font-size:11.5px;color:var(--ink-soft)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.dot{width:11px;height:11px;border-radius:2px;display:inline-block}
+.dot.exact{background:var(--moss)}
+.dot.near{background:var(--ochre)}
+.dot.miss{background:var(--dust);border:1px solid var(--dust-line)}
+
+/* ===== 页脚 ===== */
+.foot{
+  margin-top:30px;border-top:1px solid var(--line);padding-top:13px;
+  display:flex;flex-wrap:wrap;gap:5px 18px;justify-content:space-between;
+  font-size:11.5px;color:var(--ink-faint);letter-spacing:.07em;
+}
+
+/* ===== 提示条与浮层 ===== */
+.toast{
+  position:fixed;left:50%;top:14px;transform:translate(-50%,-160%);
+  background:var(--ink);color:#f7f1e5;padding:9px 16px;border-radius:2px;
+  font-size:13px;letter-spacing:.04em;z-index:60;opacity:0;
+  transition:transform .26s cubic-bezier(.3,.8,.3,1),opacity .2s;
+  max-width:min(92vw,520px);text-align:center;box-shadow:0 6px 20px rgba(36,31,26,.22);
+}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.overlay[hidden]{display:none}
+.overlay{
+  position:fixed;inset:0;z-index:50;display:grid;place-items:center;
+  background:rgba(36,31,26,.36);backdrop-filter:blur(2px);padding:16px;
+  opacity:0;pointer-events:none;transition:opacity .22s;
+}
+.overlay.open{opacity:1;pointer-events:auto}
+.sheet{
+  width:min(600px,100%);background:var(--paper);border:1px solid var(--paper-edge);border-radius:3px;
+  box-shadow:0 18px 50px rgba(36,31,26,.28);padding:24px clamp(16px,4vw,30px) 20px;
+  transform:translateY(12px);transition:transform .24s;max-height:calc(100vh - 32px);overflow-y:auto;
+}
+.overlay.open .sheet{transform:translateY(0)}
+.sheet .kicker{font-size:12px;letter-spacing:.18em;color:var(--cinnabar);margin:0 0 5px}
+.sheet h2{margin:0;font-family:var(--kai);font-weight:600;font-size:clamp(21px,5vw,29px);line-height:1.45;letter-spacing:.06em}
+.sheet h3{margin:18px 0 6px;font-family:var(--kai);font-size:16px;letter-spacing:.1em;font-weight:600}
+.sheet .verse-lines{margin:10px 0 0;font-family:var(--kai);font-size:clamp(18px,4.4vw,24px);line-height:1.75;letter-spacing:.07em}
+.sheet .src{margin:10px 0 0;font-size:13px;color:var(--ink-soft);letter-spacing:.06em}
+.sheet .msg{margin:8px 0 0;font-size:13px;color:var(--ink-soft);line-height:1.7}
+.sheet-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
+.btn{
+  appearance:none;min-height:44px;padding:0 16px;border-radius:2px;cursor:pointer;
+  font-family:var(--serif);font-size:14px;letter-spacing:.08em;
+  border:1px solid var(--line);background:#faf6ec;color:var(--ink);
+}
+.btn:hover{border-color:var(--ink-soft);background:#fffdf7}
+.btn.primary{background:var(--cinnabar);border-color:var(--cinnabar-deep);color:#f7f1e5}
+.btn.primary:hover{background:var(--cinnabar-deep)}
+.barstack{margin-top:14px;display:flex;flex-direction:column;gap:3px}
+.sheet .bars{display:flex;gap:2px}
+.bars .b{flex:1 1 0;height:8px;border-radius:1px;max-width:18px}
+.bars .b.exact{background:var(--moss)}
+.bars .b.near{background:var(--ochre)}
+.bars .b.miss{background:var(--dust)}
+
+.rules{margin:6px 0 0;padding:0;list-style:none}
+.rules li{display:flex;gap:9px;font-size:13px;color:var(--ink-soft);line-height:1.75;margin-bottom:5px}
+.rules .n{flex:0 0 auto;color:var(--cinnabar);font-family:var(--kai);min-width:1.2em}
+
+/* 题库范围面板 */
+.scope-sum{font-size:12.5px;color:var(--ink-soft);margin:2px 0 10px}
+.stage-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.stage-opt{
+  appearance:none;cursor:pointer;text-align:left;padding:8px 10px;border:1px solid var(--line);
+  border-radius:2px;background:#faf6ec;font-family:var(--serif);color:var(--ink);font-size:14px;
+  display:flex;flex-direction:column;gap:1px;
+}
+.stage-opt small{font-size:11px;color:var(--ink-faint)}
+.stage-opt.active{background:var(--ink);color:#f6f0e4;border-color:var(--ink)}
+.stage-opt.active small{color:#c9c0ae}
+.scope-tools{display:flex;gap:12px;align-items:center;margin:4px 0}
+.poem-scroll{max-height:38vh;overflow-y:auto;border-top:1px solid var(--line);padding-top:8px;scrollbar-width:thin}
+.poem-group{margin-bottom:6px}
+.poem-group .gt{font-size:11.5px;color:var(--ink-faint);letter-spacing:.1em;margin:6px 0 4px}
+.poem-list{display:flex;flex-wrap:wrap;gap:5px}
+.poem-chip{
+  appearance:none;cursor:pointer;font-family:var(--serif);font-size:12px;
+  border:1px solid var(--line);background:#faf6ec;color:var(--ink-soft);
+  padding:5px 8px;border-radius:2px;line-height:1.2;
+}
+.poem-chip.on{background:#fffdf7;color:var(--ink);border-color:#b9ab8e}
+.poem-chip.off{opacity:.42;text-decoration:line-through}
+
+@media(max-width:520px){
+  :root{--tile-h:42px}
+  .entry input{font-size:16px}
+  .line{gap:2px}
+}
+@media(max-width:400px){
+  .brand h1{font-size:26px;letter-spacing:.1em}
+  .type-chip{padding:8px 9px}
+  .type-chip .tn{font-size:15px}
+  .type-chip .td{font-size:10px}
+}
+@media(max-width:380px){
+  .type-chip .td{display:none}
+  .type-chip{padding:10px 8px}
+  .type-chip .tn{font-size:16px;letter-spacing:.1em}
+}
+@media(max-width:340px){:root{--tile-h:38px}}
+@media(prefers-reduced-motion:reduce){
+  .tile.flip{animation:none}
+  .toast,.overlay,.sheet{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="seal" aria-hidden="true">令</div>
+      <div>
+        <h1>寻花令</h1>
+        <p class="eyebrow">不限次数 · 逐字寻一句诗</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="chip" id="scopeBtn" type="button">题库范围</button>
+      <button class="chip" id="helpBtn" type="button">说明</button>
+    </div>
+  </header>
+
+  <nav class="typebar" aria-label="体裁入口">
+    <button class="type-chip active" type="button" data-type="5">
+      <span class="tn">五言</span><span class="td">两句 · 共十字</span>
+    </button>
+    <button class="type-chip" type="button" data-type="7">
+      <span class="tn">七言</span><span class="td">两句 · 共十四字</span>
+    </button>
+    <button class="type-chip" type="button" data-type="mix">
+      <span class="tn">混合</span><span class="td">五言七言 · 长短随意</span>
+    </button>
+  </nav>
+
+  <div class="main">
+    <section aria-label="对局">
+      <div class="meta">
+        <span class="mode-name" id="modeName">五言之令</span>
+        <span class="poolinfo" id="poolInfo">本题池 —</span>
+        <span class="tries">已落笔 <b id="triesNum">0</b> 次</span>
+      </div>
+
+      <div class="board-wrap" id="boardWrap">
+        <div class="board" id="board" aria-live="polite" aria-label="已落笔的句子"></div>
+      </div>
+
+      <div class="entry">
+        <div class="preview" id="preview" aria-hidden="true"></div>
+        <form id="guessForm" autocomplete="off">
+          <input id="guess" type="text" maxlength="40" inputmode="text" enterkeyhint="send"
+                 placeholder="落笔一句，字数为准" aria-label="输入诗句" autocomplete="off" autocorrect="off" spellcheck="false">
+          <button class="submit" id="submitBtn" type="submit">落笔</button>
+        </form>
+        <div class="counter">
+          <span class="num" id="charCount">0 / 10</span>
+          <span id="counterTip">标点忽略，字数须与本题一致</span>
+        </div>
+        <div class="suggest" id="suggest" aria-live="polite"></div>
+        <div class="hintbox">
+          <span class="hint-text" id="hintText">本题出自 —</span>
+          <span class="hint-acts">
+            <button class="linkbtn" id="hintBtn" type="button">求一提示</button>
+            <button class="linkbtn muted" id="skipBtn" type="button">看答案</button>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="chars" aria-label="字表">
+      <div class="chars-head">
+        <h2>字表</h2>
+        <span class="stat" id="charStat">—</span>
+      </div>
+      <div class="char-summary">
+        <span>正位 <i id="sumExact" style="color:var(--moss)">0</i></span>
+        <span>含字 <i id="sumNear" style="color:#96702f">0</i></span>
+        <span>排除 <i id="sumMiss">0</i></span>
+      </div>
+      <div class="char-tools">
+        <input id="charSearch" type="text" placeholder="查字，如「花」" aria-label="查字">
+        <label class="toggle"><input type="checkbox" id="onlyUsed">只看已试</label>
+      </div>
+      <div class="char-grid" id="charGrid" aria-label="本题池出现的汉字"></div>
+      <div class="legend">
+        <span><i class="dot exact"></i>正位</span>
+        <span><i class="dot near"></i>含字他处</span>
+        <span><i class="dot miss"></i>此题无</span>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="foot">
+    <span>墨绿为定，赭黄为移，灰者为无 —— 不限次数，直到寻回为止。</span>
+    <span>题库为教材诗词全文，全部内置于本页，断网可用</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" id="sheet">
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================
+   寻花令 · 单文件版（不限次数）
+   题库：小学 75 首 / 初中诗词曲 / 高中课标诗词，全部内联
+   每题 = 原文一个整句（以句号断开的上句＋下句，词曲一韵句可含数小句）；体裁由小句字数自动判定
+   ========================================================== */
+
+const STAGE_NAME = { p: '小学', m: '初中', h: '高中' };
+const TYPE_NAME = { 5: '五言', 7: '七言', mix: '混合' };
+
+/* [学段, 篇名, 作者, 全诗正文] —— 正文按句号断句，一个整句即一题 */
+const POEMS = [
+  ['p','江南','汉乐府','江南可采莲，莲叶何田田。鱼戏莲叶间。鱼戏莲叶东，鱼戏莲叶西，鱼戏莲叶南，鱼戏莲叶北。'],
+  ['p','长歌行','汉乐府','青青园中葵，朝露待日晞。阳春布德泽，万物生光辉。常恐秋节至，焜黄华叶衰。百川东到海，何时复西归。少壮不努力，老大徒伤悲。'],
+  ['p','敕勒歌','北朝民歌','敕勒川，阴山下。天似穹庐，笼盖四野。天苍苍，野茫茫，风吹草低见牛羊。'],
+  ['p','咏鹅','唐·骆宾王','鹅，鹅，鹅，曲项向天歌。白毛浮绿水，红掌拨清波。'],
+  ['p','风','唐·李峤','解落三秋叶，能开二月花。过江千尺浪，入竹万竿斜。'],
+  ['p','咏柳','唐·贺知章','碧玉妆成一树高，万条垂下绿丝绦。不知细叶谁裁出，二月春风似剪刀。'],
+  ['p','回乡偶书','唐·贺知章','少小离家老大回，乡音无改鬓毛衰。儿童相见不相识，笑问客从何处来。'],
+  ['p','凉州词','唐·王之涣','黄河远上白云间，一片孤城万仞山。羌笛何须怨杨柳，春风不度玉门关。'],
+  ['p','登鹳雀楼','唐·王之涣','白日依山尽，黄河入海流。欲穷千里目，更上一层楼。'],
+  ['p','春晓','唐·孟浩然','春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。'],
+  ['p','凉州词','唐·王翰','葡萄美酒夜光杯，欲饮琵琶马上催。醉卧沙场君莫笑，古来征战几人回。'],
+  ['p','出塞','唐·王昌龄','秦时明月汉时关，万里长征人未还。但使龙城飞将在，不教胡马度阴山。'],
+  ['p','芙蓉楼送辛渐','唐·王昌龄','寒雨连江夜入吴，平明送客楚山孤。洛阳亲友如相问，一片冰心在玉壶。'],
+  ['p','鹿柴','唐·王维','空山不见人，但闻人语响。返景入深林，复照青苔上。'],
+  ['p','送元二使安西','唐·王维','渭城朝雨浥轻尘，客舍青青柳色新。劝君更尽一杯酒，西出阳关无故人。'],
+  ['p','九月九日忆山东兄弟','唐·王维','独在异乡为异客，每逢佳节倍思亲。遥知兄弟登高处，遍插茱萸少一人。'],
+  ['p','静夜思','唐·李白','床前明月光，疑是地上霜。举头望明月，低头思故乡。'],
+  ['p','古朗月行','唐·李白','小时不识月，呼作白玉盘。又疑瑶台镜，飞在青云端。'],
+  ['p','望庐山瀑布','唐·李白','日照香炉生紫烟，遥看瀑布挂前川。飞流直下三千尺，疑是银河落九天。'],
+  ['p','赠汪伦','唐·李白','李白乘舟将欲行，忽闻岸上踏歌声。桃花潭水深千尺，不及汪伦送我情。'],
+  ['p','黄鹤楼送孟浩然之广陵','唐·李白','故人西辞黄鹤楼，烟花三月下扬州。孤帆远影碧空尽，唯见长江天际流。'],
+  ['p','早发白帝城','唐·李白','朝辞白帝彩云间，千里江陵一日还。两岸猿声啼不住，轻舟已过万重山。'],
+  ['p','望天门山','唐·李白','天门中断楚江开，碧水东流至此回。两岸青山相对出，孤帆一片日边来。'],
+  ['p','别董大','唐·高适','千里黄云白日曛，北风吹雁雪纷纷。莫愁前路无知己，天下谁人不识君。'],
+  ['p','绝句（两个黄鹂鸣翠柳）','唐·杜甫','两个黄鹂鸣翠柳，一行白鹭上青天。窗含西岭千秋雪，门泊东吴万里船。'],
+  ['p','春夜喜雨','唐·杜甫','好雨知时节，当春乃发生。随风潜入夜，润物细无声。野径云俱黑，江船火独明。晓看红湿处，花重锦官城。'],
+  ['p','绝句（迟日江山丽）','唐·杜甫','迟日江山丽，春风花草香。泥融飞燕子，沙暖睡鸳鸯。'],
+  ['p','江畔独步寻花','唐·杜甫','黄四娘家花满蹊，千朵万朵压枝低。留连戏蝶时时舞，自在娇莺恰恰啼。'],
+  ['p','枫桥夜泊','唐·张继','月落乌啼霜满天，江枫渔火对愁眠。姑苏城外寒山寺，夜半钟声到客船。'],
+  ['p','滁州西涧','唐·韦应物','独怜幽草涧边生，上有黄鹂深树鸣。春潮带雨晚来急，野渡无人舟自横。'],
+  ['p','渔歌子','唐·张志和','西塞山前白鹭飞，桃花流水鳜鱼肥。青箬笠，绿蓑衣，斜风细雨不须归。'],
+  ['p','塞下曲','唐·卢纶','月黑雁飞高，单于夜遁逃。欲将轻骑逐，大雪满弓刀。'],
+  ['p','游子吟','唐·孟郊','慈母手中线，游子身上衣。临行密密缝，意恐迟迟归。谁言寸草心，报得三春晖。'],
+  ['p','早春呈水部张十八员外','唐·韩愈','天街小雨润如酥，草色遥看近却无。最是一年春好处，绝胜烟柳满皇都。'],
+  ['p','望洞庭','唐·刘禹锡','湖光秋月两相和，潭面无风镜未磨。遥望洞庭山水翠，白银盘里一青螺。'],
+  ['p','浪淘沙','唐·刘禹锡','九曲黄河万里沙，浪淘风簸自天涯。如今直上银河去，同到牵牛织女家。'],
+  ['p','赋得古原草送别','唐·白居易','离离原上草，一岁一枯荣。野火烧不尽，春风吹又生。远芳侵古道，晴翠接荒城。又送王孙去，萋萋满别情。'],
+  ['p','池上','唐·白居易','小娃撑小艇，偷采白莲回。不解藏踪迹，浮萍一道开。'],
+  ['p','忆江南','唐·白居易','江南好，风景旧曾谙。日出江花红胜火，春来江水绿如蓝。能不忆江南。'],
+  ['p','小儿垂钓','唐·胡令能','蓬头稚子学垂纶，侧坐莓苔草映身。路人借问遥招手，怕得鱼惊不应人。'],
+  ['p','悯农（锄禾日当午）','唐·李绅','锄禾日当午，汗滴禾下土。谁知盘中餐，粒粒皆辛苦。'],
+  ['p','悯农（春种一粒粟）','唐·李绅','春种一粒粟，秋收万颗子。四海无闲田，农夫犹饿死。'],
+  ['p','江雪','唐·柳宗元','千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。'],
+  ['p','寻隐者不遇','唐·贾岛','松下问童子，言师采药去。只在此山中，云深不知处。'],
+  ['p','山行','唐·杜牧','远上寒山石径斜，白云生处有人家。停车坐爱枫林晚，霜叶红于二月花。'],
+  ['p','清明','唐·杜牧','清明时节雨纷纷，路上行人欲断魂。借问酒家何处有，牧童遥指杏花村。'],
+  ['p','江南春','唐·杜牧','千里莺啼绿映红，水村山郭酒旗风。南朝四百八十寺，多少楼台烟雨中。'],
+  ['p','蜂','唐·罗隐','不论平地与山尖，无限风光尽被占。采得百花成蜜后，为谁辛苦为谁甜。'],
+  ['p','江上渔者','宋·范仲淹','江上往来人，但爱鲈鱼美。君看一叶舟，出没风波里。'],
+  ['p','元日','宋·王安石','爆竹声中一岁除，春风送暖入屠苏。千门万户曈曈日，总把新桃换旧符。'],
+  ['p','泊船瓜洲','宋·王安石','京口瓜洲一水间，钟山只隔数重山。春风又绿江南岸，明月何时照我还。'],
+  ['p','书湖阴先生壁','宋·王安石','茅檐长扫净无苔，花木成畦手自栽。一水护田将绿绕，两山排闼送青来。'],
+  ['p','六月二十七日望湖楼醉书','宋·苏轼','黑云翻墨未遮山，白雨跳珠乱入船。卷地风来忽吹散，望湖楼下水如天。'],
+  ['p','饮湖上初晴后雨','宋·苏轼','水光潋滟晴方好，山色空蒙雨亦奇。欲把西湖比西子，淡妆浓抹总相宜。'],
+  ['p','惠崇春江晚景','宋·苏轼','竹外桃花三两枝，春江水暖鸭先知。蒌蒿满地芦芽短，正是河豚欲上时。'],
+  ['p','题西林壁','宋·苏轼','横看成岭侧成峰，远近高低各不同。不识庐山真面目，只缘身在此山中。'],
+  ['p','夏日绝句','宋·李清照','生当作人杰，死亦为鬼雄。至今思项羽，不肯过江东。'],
+  ['p','三衢道中','宋·曾几','梅子黄时日日晴，小溪泛尽却山行。绿阴不减来时路，添得黄鹂四五声。'],
+  ['p','示儿','宋·陆游','死去元知万事空，但悲不见九州同。王师北定中原日，家祭无忘告乃翁。'],
+  ['p','秋夜将晓出篱门迎凉有感','宋·陆游','三万里河东入海，五千仞岳上摩天。遗民泪尽胡尘里，南望王师又一年。'],
+  ['p','四时田园杂兴（昼出耘田夜绩麻）','宋·范成大','昼出耘田夜绩麻，村庄儿女各当家。童孙未解供耕织，也傍桑阴学种瓜。'],
+  ['p','四时田园杂兴（梅子金黄杏子肥）','宋·范成大','梅子金黄杏子肥，麦花雪白菜花稀。日长篱落无人过，惟有蜻蜓蛱蝶飞。'],
+  ['p','小池','宋·杨万里','泉眼无声惜细流，树阴照水爱晴柔。小荷才露尖尖角，早有蜻蜓立上头。'],
+  ['p','晓出净慈寺送林子方','宋·杨万里','毕竟西湖六月中，风光不与四时同。接天莲叶无穷碧，映日荷花别样红。'],
+  ['p','春日','宋·朱熹','胜日寻芳泗水滨，无边光景一时新。等闲识得东风面，万紫千红总是春。'],
+  ['p','观书有感','宋·朱熹','半亩方塘一鉴开，天光云影共徘徊。问渠那得清如许，为有源头活水来。'],
+  ['p','题临安邸','宋·林升','山外青山楼外楼，西湖歌舞几时休。暖风熏得游人醉，直把杭州作汴州。'],
+  ['p','游园不值','宋·叶绍翁','应怜屐齿印苍苔，小扣柴扉久不开。春色满园关不住，一枝红杏出墙来。'],
+  ['p','乡村四月','宋·翁卷','绿遍山原白满川，子规声里雨如烟。乡村四月闲人少，才了蚕桑又插田。'],
+  ['p','墨梅','元·王冕','我家洗砚池头树，朵朵花开淡墨痕。不要人夸好颜色，只留清气满乾坤。'],
+  ['p','石灰吟','明·于谦','千锤万凿出深山，烈火焚烧若等闲。粉骨碎身浑不怕，要留清白在人间。'],
+  ['p','竹石','清·郑燮','咬定青山不放松，立根原在破岩中。千磨万击还坚劲，任尔东西南北风。'],
+  ['p','所见','清·袁枚','牧童骑黄牛，歌声振林樾。意欲捕鸣蝉，忽然闭口立。'],
+  ['p','己亥杂诗（九州生气恃风雷）','清·龚自珍','九州生气恃风雷，万马齐喑究可哀。我劝天公重抖擞，不拘一格降人才。'],
+  ['p','村居','清·高鼎','草长莺飞二月天，拂堤杨柳醉春烟。儿童散学归来早，忙趁东风放纸鸢。'],
+  ['m','关雎','《诗经》','关关雎鸠，在河之洲。窈窕淑女，君子好逑。参差荇菜，左右流之。窈窕淑女，寤寐求之。求之不得，寤寐思服。悠哉悠哉，辗转反侧。参差荇菜，左右采之。窈窕淑女，琴瑟友之。参差荇菜，左右芼之。窈窕淑女，钟鼓乐之。'],
+  ['m','蒹葭','《诗经》','蒹葭苍苍，白露为霜。所谓伊人，在水一方。溯洄从之，道阻且长。溯游从之，宛在水中央。蒹葭萋萋，白露未晞。所谓伊人，在水之湄。溯洄从之，道阻且跻。溯游从之，宛在水中坻。蒹葭采采，白露未已。所谓伊人，在水之涘。溯洄从之，道阻且右。溯游从之，宛在水中沚。'],
+  ['m','十五从军征','汉乐府','十五从军征，八十始得归。道逢乡里人，家中有阿谁。遥看是君家，松柏冢累累。兔从狗窦入，雉从梁上飞。中庭生旅谷，井上生旅葵。舂谷持作饭，采葵持作羹。羹饭一时熟，不知贻阿谁。出门东向看，泪落沾我衣。'],
+  ['m','观沧海','汉·曹操','东临碣石，以观沧海。水何澹澹，山岛竦峙。树木丛生，百草丰茂。秋风萧瑟，洪波涌起。日月之行，若出其中。星汉灿烂，若出其里。幸甚至哉，歌以咏志。'],
+  ['m','饮酒（其五）','晋·陶渊明','结庐在人境，而无车马喧。问君何能尔，心远地自偏。采菊东篱下，悠然见南山。山气日夕佳，飞鸟相与还。此中有真意，欲辨已忘言。'],
+  ['m','木兰诗','北朝民歌','唧唧复唧唧，木兰当户织。不闻机杼声，唯闻女叹息。问女何所思，问女何所忆。女亦无所思，女亦无所忆。昨夜见军帖，可汗大点兵。军书十二卷，卷卷有爷名。阿爷无大儿，木兰无长兄。愿为市鞍马，从此替爷征。东市买骏马，西市买鞍鞯，南市买辔头，北市买长鞭。旦辞爷娘去，暮宿黄河边。不闻爷娘唤女声，但闻黄河流水鸣溅溅。旦辞黄河去，暮至黑山头。不闻爷娘唤女声，但闻燕山胡骑鸣啾啾。万里赴戎机，关山度若飞。朔气传金柝，寒光照铁衣。将军百战死，壮士十年归。归来见天子，天子坐明堂。策勋十二转，赏赐百千强。可汗问所欲，木兰不用尚书郎。愿驰千里足，送儿还故乡。爷娘闻女来，出郭相扶将。阿姊闻妹来，当户理红妆。小弟闻姊来，磨刀霍霍向猪羊。开我东阁门，坐我西阁床。脱我战时袍，著我旧时裳。当窗理云鬓，对镜帖花黄。出门看火伴，火伴皆惊忙。同行十二年，不知木兰是女郎。雄兔脚扑朔，雌兔眼迷离。双兔傍地走，安能辨我是雄雌。'],
+  ['m','送杜少府之任蜀州','唐·王勃','城阙辅三秦，风烟望五津。与君离别意，同是宦游人。海内存知己，天涯若比邻。无为在歧路，儿女共沾巾。'],
+  ['m','登幽州台歌','唐·陈子昂','前不见古人，后不见来者。念天地之悠悠，独怆然而涕下。'],
+  ['m','次北固山下','唐·王湾','客路青山外，行舟绿水前。潮平两岸阔，风正一帆悬。海日生残夜，江春入旧年。乡书何处达，归雁洛阳边。'],
+  ['m','使至塞上','唐·王维','单车欲问边，属国过居延。征蓬出汉塞，归雁入胡天。大漠孤烟直，长河落日圆。萧关逢候骑，都护在燕然。'],
+  ['m','闻王昌龄左迁龙标遥有此寄','唐·李白','杨花落尽子规啼，闻道龙标过五溪。我寄愁心与明月，随君直到夜郎西。'],
+  ['m','行路难（其一）','唐·李白','金樽清酒斗十千，玉盘珍羞直万钱。停杯投箸不能食，拔剑四顾心茫然。欲渡黄河冰塞川，将登太行雪满山。闲来垂钓碧溪上，忽复乘舟梦日边。行路难，行路难，多歧路，今安在。长风破浪会有时，直挂云帆济沧海。'],
+  ['m','黄鹤楼','唐·崔颢','昔人已乘黄鹤去，此地空余黄鹤楼。黄鹤一去不复返，白云千载空悠悠。晴川历历汉阳树，芳草萋萋鹦鹉洲。日暮乡关何处是，烟波江上使人愁。'],
+  ['m','望岳','唐·杜甫','岱宗夫如何，齐鲁青未了。造化钟神秀，阴阳割昏晓。荡胸生曾云，决眦入归鸟。会当凌绝顶，一览众山小。'],
+  ['m','春望','唐·杜甫','国破山河在，城春草木深。感时花溅泪，恨别鸟惊心。烽火连三月，家书抵万金。白头搔更短，浑欲不胜簪。'],
+  ['m','茅屋为秋风所破歌','唐·杜甫','八月秋高风怒号，卷我屋上三重茅。茅飞渡江洒江郊，高者挂罥长林梢，下者飘转沉塘坳。南村群童欺我老无力，忍能对面为盗贼。公然抱茅入竹去，唇焦口燥呼不得，归来倚杖自叹息。俄顷风定云墨色，秋天漠漠向昏黑。布衾多年冷似铁，娇儿恶卧踏里裂。床头屋漏无干处，雨脚如麻未断绝。自经丧乱少睡眠，长夜沾湿何由彻。安得广厦千万间，大庇天下寒士俱欢颜。风雨不动安如山。呜呼，何时眼前突兀见此屋，吾庐独破受冻死亦足。'],
+  ['m','白雪歌送武判官归京','唐·岑参','北风卷地白草折，胡天八月即飞雪。忽如一夜春风来，千树万树梨花开。散入珠帘湿罗幕，狐裘不暖锦衾薄。将军角弓不得控，都护铁衣冷难着。瀚海阑干百丈冰，愁云惨淡万里凝。中军置酒饮归客，胡琴琵琶与羌笛。纷纷暮雪下辕门，风掣红旗冻不翻。轮台东门送君去，去时雪满天山路。山回路转不见君，雪上空留马行处。'],
+  ['m','酬乐天扬州初逢席上见赠','唐·刘禹锡','巴山楚水凄凉地，二十三年弃置身。怀旧空吟闻笛赋，到乡翻似烂柯人。沉舟侧畔千帆过，病树前头万木春。今日听君歌一曲，暂凭杯酒长精神。'],
+  ['m','卖炭翁','唐·白居易','卖炭翁，伐薪烧炭南山中。满面尘灰烟火色，两鬓苍苍十指黑。卖炭得钱何所营，身上衣裳口中食。可怜身上衣正单，心忧炭贱愿天寒。夜来城外一尺雪，晓驾炭车辗冰辙。牛困人饥日已高，市南门外泥中歇。翩翩两骑来是谁，黄衣使者白衫儿。手把文书口称敕，回车叱牛牵向北。一车炭，千余斤，宫使驱将惜不得。半匹红纱一丈绫，系向牛头充炭直。'],
+  ['m','钱塘湖春行','唐·白居易','孤山寺北贾亭西，水面初平云脚低。几处早莺争暖树，谁家新燕啄春泥。乱花渐欲迷人眼，浅草才能没马蹄。最爱湖东行不足，绿杨阴里白沙堤。'],
+  ['m','雁门太守行','唐·李贺','黑云压城城欲摧，甲光向日金鳞开。角声满天秋色里，塞上燕脂凝夜紫。半卷红旗临易水，霜重鼓寒声不起。报君黄金台上意，提携玉龙为君死。'],
+  ['m','赤壁','唐·杜牧','折戟沉沙铁未销，自将磨洗认前朝。东风不与周郎便，铜雀春深锁二乔。'],
+  ['m','泊秦淮','唐·杜牧','烟笼寒水月笼沙，夜泊秦淮近酒家。商女不知亡国恨，隔江犹唱后庭花。'],
+  ['m','夜雨寄北','唐·李商隐','君问归期未有期，巴山夜雨涨秋池。何当共剪西窗烛，却话巴山夜雨时。'],
+  ['m','无题','唐·李商隐','相见时难别亦难，东风无力百花残。春蚕到死丝方尽，蜡炬成灰泪始干。晓镜但愁云鬓改，夜吟应觉月光寒。蓬山此去无多路，青鸟殷勤为探看。'],
+  ['m','相见欢','五代·李煜','无言独上西楼，月如钩。寂寞梧桐深院锁清秋。剪不断，理还乱，是离愁。别是一般滋味在心头。'],
+  ['m','渔家傲·秋思','宋·范仲淹','塞下秋来风景异，衡阳雁去无留意。四面边声连角起。千嶂里，长烟落日孤城闭。浊酒一杯家万里，燕然未勒归无计。羌管悠悠霜满地。人不寐，将军白发征夫泪。'],
+  ['m','浣溪沙','宋·晏殊','一曲新词酒一杯，去年天气旧亭台。夕阳西下几时回。无可奈何花落去，似曾相识燕归来。小园香径独徘徊。'],
+  ['m','登飞来峰','宋·王安石','飞来山上千寻塔，闻说鸡鸣见日升。不畏浮云遮望眼，自缘身在最高层。'],
+  ['m','江城子·密州出猎','宋·苏轼','老夫聊发少年狂，左牵黄，右擎苍。锦帽貂裘，千骑卷平冈。为报倾城随太守，亲射虎，看孙郎。酒酣胸胆尚开张，鬓微霜，又何妨。持节云中，何日遣冯唐。会挽雕弓如满月，西北望，射天狼。'],
+  ['m','水调歌头','宋·苏轼','明月几时有，把酒问青天。不知天上宫阙，今夕是何年。我欲乘风归去，又恐琼楼玉宇，高处不胜寒。起舞弄清影，何似在人间。转朱阁，低绮户，照无眠。不应有恨，何事长向别时圆。人有悲欢离合，月有阴晴圆缺，此事古难全。但愿人长久，千里共婵娟。'],
+  ['m','渔家傲（天接云涛连晓雾）','宋·李清照','天接云涛连晓雾，星河欲转千帆舞。仿佛梦魂归帝所。闻天语，殷勤问我归何处。我报路长嗟日暮，学诗谩有惊人句。九万里风鹏正举。风休住，蓬舟吹取三山去。'],
+  ['m','游山西村','宋·陆游','莫笑农家腊酒浑，丰年留客足鸡豚。山重水复疑无路，柳暗花明又一村。箫鼓追随春社近，衣冠简朴古风存。从今若许闲乘月，拄杖无时夜叩门。'],
+  ['m','南乡子·登京口北固亭有怀','宋·辛弃疾','何处望神州，满眼风光北固楼。千古兴亡多少事，悠悠。不尽长江滚滚流。年少万兜鍪，坐断东南战未休。天下英雄谁敌手，曹刘。生子当如孙仲谋。'],
+  ['m','破阵子·为陈同甫赋壮词以寄之','宋·辛弃疾','醉里挑灯看剑，梦回吹角连营。八百里分麾下炙，五十弦翻塞外声。沙场秋点兵。马作的卢飞快，弓如霹雳弦惊。了却君王天下事，赢得生前身后名。可怜白发生。'],
+  ['m','过零丁洋','宋·文天祥','辛苦遭逢起一经，干戈寥落四周星。山河破碎风飘絮，身世浮沉雨打萍。惶恐滩头说惶恐，零丁洋里叹零丁。人生自古谁无死，留取丹心照汗青。'],
+  ['m','天净沙·秋思','元·马致远','枯藤老树昏鸦，小桥流水人家，古道西风瘦马。夕阳西下，断肠人在天涯。'],
+  ['m','山坡羊·潼关怀古','元·张养浩','峰峦如聚，波涛如怒，山河表里潼关路。望西都，意踌躇。伤心秦汉经行处，宫阙万间都做了土。兴，百姓苦。亡，百姓苦。'],
+  ['m','己亥杂诗（其五）','清·龚自珍','浩荡离愁白日斜，吟鞭东指即天涯。落红不是无情物，化作春泥更护花。'],
+  ['m','满江红','清·秋瑾','小住京华，早又是中秋佳节。为篱下黄花开遍，秋容如拭。四面歌残终破楚，八年风味徒思浙。苦将侬强派作蛾眉，殊未屑。身不得，男儿列。心却比，男儿烈。算平生肝胆，因人常热。俗子胸襟谁识我，英雄末路当磨折。莽红尘何处觅知音，青衫湿。'],
+  ['h','静女','《诗经·邶风》','静女其姝，俟我于城隅。爱而不见，搔首踟蹰。静女其娈，贻我彤管。彤管有炜，说怿女美。自牧归荑，洵美且异。匪女之为美，美人之贻。'],
+  ['h','无衣','《诗经·秦风》','岂曰无衣，与子同袍。王于兴师，修我戈矛。与子同仇。岂曰无衣，与子同泽。王于兴师，修我矛戟。与子偕作。岂曰无衣，与子同裳。王于兴师，修我甲兵。与子偕行。'],
+  ['h','离骚（节选）','战国·屈原','长太息以掩涕兮，哀民生之多艰。余虽好修姱以鞿羁兮，謇朝谇而夕替。既替余以蕙纕兮，又申之以揽茝。亦余心之所善兮，虽九死其犹未悔。怨灵修之浩荡兮，终不察夫民心。众女嫉余之蛾眉兮，谣诼谓余以善淫。固时俗之工巧兮，偭规矩而改错。背绳墨以追曲兮，竞周容以为度。忳郁邑余侘傺兮，吾独穷困乎此时也。宁溘死以流亡兮，余不忍为此态也。鸷鸟之不群兮，自前世而固然。何方圜之能周兮，夫孰异道而相安。屈心而抑志兮，忍尤而攘诟。伏清白以死直兮，固前圣之所厚。'],
+  ['h','涉江采芙蓉','《古诗十九首》','涉江采芙蓉，兰泽多芳草。采之欲遗谁，所思在远道。还顾望旧乡，长路漫浩浩。同心而离居，忧伤以终老。'],
+  ['h','短歌行','汉·曹操','对酒当歌，人生几何。譬如朝露，去日苦多。慨当以慷，忧思难忘。何以解忧，唯有杜康。青青子衿，悠悠我心。但为君故，沉吟至今。呦呦鹿鸣，食野之苹。我有嘉宾，鼓瑟吹笙。明明如月，何时可掇。忧从中来，不可断绝。越陌度阡，枉用相存。契阔谈宴，心念旧恩。月明星稀，乌鹊南飞。绕树三匝，何枝可依。山不厌高，海不厌深。周公吐哺，天下归心。'],
+  ['h','归园田居（其一）','晋·陶渊明','少无适俗韵，性本爱丘山。误落尘网中，一去三十年。羁鸟恋旧林，池鱼思故渊。开荒南野际，守拙归园田。方宅十余亩，草屋八九间。榆柳荫后檐，桃李罗堂前。暧暧远人村，依依墟里烟。狗吠深巷中，鸡鸣桑树颠。户庭无尘杂，虚室有余闲。久在樊笼里，复得返自然。'],
+  ['h','拟行路难（其四）','南朝·鲍照','泻水置平地，各自东西南北流。人生亦有命，安能行叹复坐愁。酌酒以自宽，举杯断绝歌路难。心非木石岂无感，吞声踯躅不敢言。'],
+  ['h','春江花月夜','唐·张若虚','春江潮水连海平，海上明月共潮生。滟滟随波千万里，何处春江无月明。江流宛转绕芳甸，月照花林皆似霰。空里流霜不觉飞，汀上白沙看不见。江天一色无纤尘，皎皎空中孤月轮。江畔何人初见月，江月何年初照人。人生代代无穷已，江月年年只相似。不知江月待何人，但见长江送流水。白云一片去悠悠，青枫浦上不胜愁。谁家今夜扁舟子，何处相思明月楼。可怜楼上月徘徊，应照离人妆镜台。玉户帘中卷不去，捣衣砧上拂还来。此时相望不相闻，愿逐月华流照君。鸿雁长飞光不度，鱼龙潜跃水成文。昨夜闲潭梦落花，可怜春半不还家。江水流春去欲尽，江潭落月复西斜。斜月沉沉藏海雾，碣石潇湘无限路。不知乘月几人归，落月摇情满江树。'],
+  ['h','山居秋暝','唐·王维','空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。'],
+  ['h','蜀道难','唐·李白','噫吁嚱，危乎高哉。蜀道之难，难于上青天。蚕丛及鱼凫，开国何茫然。尔来四万八千岁，不与秦塞通人烟。西当太白有鸟道，可以横绝峨眉巅。地崩山摧壮士死，然后天梯石栈相钩连。上有六龙回日之高标，下有冲波逆折之回川。黄鹤之飞尚不得过，猿猱欲度愁攀援。青泥何盘盘，百步九折萦岩峦。扪参历井仰胁息，以手抚膺坐长叹。问君西游何时还，畏途巉岩不可攀。但见悲鸟号古木，雄飞雌从绕林间。又闻子规啼夜月，愁空山。蜀道之难，难于上青天，使人听此凋朱颜。连峰去天不盈尺，枯松倒挂倚绝壁。飞湍瀑流争喧豗，砯崖转石万壑雷。其险也如此，嗟尔远道之人胡为乎来哉。剑阁峥嵘而崔嵬，一夫当关，万夫莫开。所守或匪亲，化为狼与豺。朝避猛虎，夕避长蛇。磨牙吮血，杀人如麻。锦城虽云乐，不如早还家。蜀道之难，难于上青天，侧身西望长咨嗟。'],
+  ['h','梦游天姥吟留别','唐·李白','海客谈瀛洲，烟涛微茫信难求。越人语天姥，云霞明灭或可睹。天姥连天向天横，势拔五岳掩赤城。天台四万八千丈，对此欲倒东南倾。我欲因之梦吴越，一夜飞度镜湖月。湖月照我影，送我至剡溪。谢公宿处今尚在，渌水荡漾清猿啼。脚著谢公屐，身登青云梯。半壁见海日，空中闻天鸡。千岩万转路不定，迷花倚石忽已暝。熊咆龙吟殷岩泉，栗深林兮惊层巅。云青青兮欲雨，水澹澹兮生烟。列缺霹雳，丘峦崩摧。洞天石扉，訇然中开。青冥浩荡不见底，日月照耀金银台。霓为衣兮风为马，云之君兮纷纷而来下。虎鼓瑟兮鸾回车，仙之人兮列如麻。忽魂悸以魄动，恍惊起而长嗟。惟觉时之枕席，失向来之烟霞。世间行乐亦如此，古来万事东流水。别君去兮何时还，且放白鹿青崖间，须行即骑访名山。安能摧眉折腰事权贵，使我不得开心颜。'],
+  ['h','将进酒','唐·李白','君不见黄河之水天上来，奔流到海不复回。君不见高堂明镜悲白发，朝如青丝暮成雪。人生得意须尽欢，莫使金樽空对月。天生我材必有用，千金散尽还复来。烹羊宰牛且为乐，会须一饮三百杯。岑夫子，丹丘生，将进酒，杯莫停。与君歌一曲，请君为我倾耳听。钟鼓馔玉不足贵，但愿长醉不复醒。古来圣贤皆寂寞，惟有饮者留其名。陈王昔时宴平乐，斗酒十千恣欢谑。主人何为言少钱，径须沽取对君酌。五花马，千金裘，呼儿将出换美酒，与尔同销万古愁。'],
+  ['h','燕歌行','唐·高适','汉家烟尘在东北，汉将辞家破残贼。男儿本自重横行，天子非常赐颜色。摐金伐鼓下榆关，旌旆逶迤碣石间。校尉羽书飞瀚海，单于猎火照狼山。山川萧条极边土，胡骑凭陵杂风雨。战士军前半死生，美人帐下犹歌舞。大漠穷秋塞草腓，孤城落日斗兵稀。身当恩遇常轻敌，力尽关山未解围。铁衣远戍辛勤久，玉箸应啼别离后。少妇城南欲断肠，征人蓟北空回首。边庭飘飖那可度，绝域苍茫更何有。杀气三时作阵云，寒声一夜传刁斗。相看白刃血纷纷，死节从来岂顾勋。君不见沙场征战苦，至今犹忆李将军。'],
+  ['h','蜀相','唐·杜甫','丞相祠堂何处寻，锦官城外柏森森。映阶碧草自春色，隔叶黄鹂空好音。三顾频烦天下计，两朝开济老臣心。出师未捷身先死，长使英雄泪满襟。'],
+  ['h','客至','唐·杜甫','舍南舍北皆春水，但见群鸥日日来。花径不曾缘客扫，蓬门今始为君开。盘飧市远无兼味，樽酒家贫只旧醅。肯与邻翁相对饮，隔篱呼取尽余杯。'],
+  ['h','登高','唐·杜甫','风急天高猿啸哀，渚清沙白鸟飞回。无边落木萧萧下，不尽长江滚滚来。万里悲秋常作客，百年多病独登台。艰难苦恨繁霜鬓，潦倒新停浊酒杯。'],
+  ['h','登岳阳楼','唐·杜甫','昔闻洞庭水，今上岳阳楼。吴楚东南坼，乾坤日夜浮。亲朋无一字，老病有孤舟。戎马关山北，凭轩涕泗流。'],
+  ['h','琵琶行（并序）','唐·白居易','浔阳江头夜送客，枫叶荻花秋瑟瑟。主人下马客在船，举酒欲饮无管弦。醉不成欢惨将别，别时茫茫江浸月。忽闻水上琵琶声，主人忘归客不发。寻声暗问弹者谁，琵琶声停欲语迟。移船相近邀相见，添酒回灯重开宴。千呼万唤始出来，犹抱琵琶半遮面。转轴拨弦三两声，未成曲调先有情。弦弦掩抑声声思，似诉平生不得志。低眉信手续续弹，说尽心中无限事。轻拢慢捻抹复挑，初为霓裳后六幺。大弦嘈嘈如急雨，小弦切切如私语。嘈嘈切切错杂弹，大珠小珠落玉盘。间关莺语花底滑，幽咽泉流冰下难。冰泉冷涩弦凝绝，凝绝不通声暂歇。别有幽愁暗恨生，此时无声胜有声。银瓶乍破水浆迸，铁骑突出刀枪鸣。曲终收拨当心画，四弦一声如裂帛。东船西舫悄无言，唯见江心秋月白。沉吟放拨插弦中，整顿衣裳起敛容。自言本是京城女，家在虾蟆陵下住。十三学得琵琶成，名属教坊第一部。曲罢曾教善才服，妆成每被秋娘妒。五陵年少争缠头，一曲红绡不知数。钿头银篦击节碎，血色罗裙翻酒污。今年欢笑复明年，秋月春风等闲度。弟走从军阿姨死，暮去朝来颜色故。门前冷落鞍马稀，老大嫁作商人妇。商人重利轻别离，前月浮梁买茶去。去来江口守空船，绕船月明江水寒。夜深忽梦少年事，梦啼妆泪红阑干。我闻琵琶已叹息，又闻此语重唧唧。同是天涯沦落人，相逢何必曾相识。我从去年辞帝京，谪居卧病浔阳城。浔阳地僻无音乐，终岁不闻丝竹声。住近湓江地低湿，黄芦苦竹绕宅生。其间旦暮闻何物，杜鹃啼血猿哀鸣。春江花朝秋月夜，往往取酒还独倾。岂无山歌与村笛，呕哑嘲哳难为听。今夜闻君琵琶语，如听仙乐耳暂明。莫辞更坐弹一曲，为君翻作琵琶行。感我此言良久立，却坐促弦弦转急。凄凄不似向前声，满座重闻皆掩泣。座中泣下谁最多，江州司马青衫湿。'],
+  ['h','李凭箜篌引','唐·李贺','吴丝蜀桐张高秋，空山凝云颓不流。江娥啼竹素女愁，李凭中国弹箜篌。昆山玉碎凤凰叫，芙蓉泣露香兰笑。十二门前融冷光，二十三丝动紫皇。女娲炼石补天处，石破天惊逗秋雨。梦入神山教神妪，老鱼跳波瘦蛟舞。吴质不眠倚桂树，露脚斜飞湿寒兔。'],
+  ['h','菩萨蛮（小山重叠金明灭）','唐·温庭筠','小山重叠金明灭，鬓云欲度香腮雪。懒起画蛾眉，弄妆梳洗迟。照花前后镜，花面交相映。新帖绣罗襦，双双金鹧鸪。'],
+  ['h','锦瑟','唐·李商隐','锦瑟无端五十弦，一弦一柱思华年。庄生晓梦迷蝴蝶，望帝春心托杜鹃。沧海月明珠有泪，蓝田日暖玉生烟。此情可待成追忆，只是当时已惘然。'],
+  ['h','虞美人（春花秋月何时了）','五代·李煜','春花秋月何时了，往事知多少。小楼昨夜又东风，故国不堪回首月明中。雕栏玉砌应犹在，只是朱颜改。问君能有几多愁，恰似一江春水向东流。'],
+  ['h','望海潮（东南形胜）','宋·柳永','东南形胜，三吴都会，钱塘自古繁华。烟柳画桥，风帘翠幕，参差十万人家。云树绕堤沙。怒涛卷霜雪，天堑无涯。市列珠玑，户盈罗绮，竞豪奢。重湖叠巘清嘉。有三秋桂子，十里荷花。羌管弄晴，菱歌泛夜，嬉嬉钓叟莲娃。千骑拥高牙。乘醉听箫鼓，吟赏烟霞。异日图将好景，归去凤池夸。'],
+  ['h','桂枝香·金陵怀古','宋·王安石','登临送目，正故国晚秋，天气初肃。千里澄江似练，翠峰如簇。归帆去棹残阳里，背西风，酒旗斜矗。彩舟云淡，星河鹭起，画图难足。念往昔，繁华竞逐，叹门外楼头，悲恨相续。千古凭高对此，谩嗟荣辱。六朝旧事随流水，但寒烟衰草凝绿。至今商女，时时犹唱，后庭遗曲。'],
+  ['h','江城子·乙卯正月二十日夜记梦','宋·苏轼','十年生死两茫茫，不思量，自难忘。千里孤坟，无处话凄凉。纵使相逢应不识，尘满面，鬓如霜。夜来幽梦忽还乡，小轩窗，正梳妆。相顾无言，惟有泪千行。料得年年肠断处，明月夜，短松冈。'],
+  ['h','念奴娇·赤壁怀古','宋·苏轼','大江东去，浪淘尽，千古风流人物。故垒西边，人道是，三国周郎赤壁。乱石穿空，惊涛拍岸，卷起千堆雪。江山如画，一时多少豪杰。遥想公瑾当年，小乔初嫁了，雄姿英发。羽扇纶巾，谈笑间，樯橹灰飞烟灭。故国神游，多情应笑我，早生华发。人生如梦，一尊还酹江月。'],
+  ['h','登快阁','宋·黄庭坚','痴儿了却公家事，快阁东西倚晚晴。落木千山天远大，澄江一道月分明。朱弦已为佳人绝，青眼聊因美酒横。万里归船弄长笛，此心吾与白鸥盟。'],
+  ['h','鹊桥仙（纤云弄巧）','宋·秦观','纤云弄巧，飞星传恨，银汉迢迢暗度。金风玉露一相逢，便胜却人间无数。柔情似水，佳期如梦，忍顾鹊桥归路。两情若是久长时，又岂在朝朝暮暮。'],
+  ['h','苏幕遮（燎沉香）','宋·周邦彦','燎沉香，消溽暑。鸟雀呼晴，侵晓窥檐语。叶上初阳干宿雨，水面清圆，一一风荷举。故乡遥，何日去。家住吴门，久作长安旅。五月渔郎相忆否，小楫轻舟，梦入芙蓉浦。'],
+  ['h','声声慢（寻寻觅觅）','宋·李清照','寻寻觅觅，冷冷清清，凄凄惨惨戚戚。乍暖还寒时候，最难将息。三杯两盏淡酒，怎敌他晚来风急。雁过也，正伤心，却是旧时相识。满地黄花堆积，憔悴损，如今有谁堪摘。守着窗儿，独自怎生得黑。梧桐更兼细雨，到黄昏点点滴滴。这次第，怎一个愁字了得。'],
+  ['h','书愤','宋·陆游','早岁那知世事艰，中原北望气如山。楼船夜雪瓜洲渡，铁马秋风大散关。塞上长城空自许，镜中衰鬓已先斑。出师一表真名世，千载谁堪伯仲间。'],
+  ['h','临安春雨初霁','宋·陆游','世味年来薄似纱，谁令骑马客京华。小楼一夜听春雨，深巷明朝卖杏花。矮纸斜行闲作草，晴窗细乳戏分茶。素衣莫起风尘叹，犹及清明可到家。'],
+  ['h','念奴娇·过洞庭','宋·张孝祥','洞庭青草，近中秋，更无一点风色。玉鉴琼田三万顷，着我扁舟一叶。素月分辉，明河共影，表里俱澄澈。悠然心会，妙处难与君说。应念岭海经年，孤光自照，肝胆皆冰雪。短发萧骚襟袖冷，稳泛沧浪空阔。尽挹西江，细斟北斗，万象为宾客。扣舷独啸，不知今夕何夕。'],
+  ['h','永遇乐·京口北固亭怀古','宋·辛弃疾','千古江山，英雄无觅，孙仲谋处。舞榭歌台，风流总被，雨打风吹去。斜阳草树，寻常巷陌，人道寄奴曾住。想当年，金戈铁马，气吞万里如虎。元嘉草草，封狼居胥，赢得仓皇北顾。四十三年，望中犹记，烽火扬州路。可堪回首，佛狸祠下，一片神鸦社鼓。凭谁问，廉颇老矣，尚能饭否。'],
+  ['h','菩萨蛮·书江西造口壁','宋·辛弃疾','郁孤台下清江水，中间多少行人泪。西北望长安，可怜无数山。青山遮不住，毕竟东流去。江晚正愁余，山深闻鹧鸪。'],
+  ['h','青玉案·元夕','宋·辛弃疾','东风夜放花千树，更吹落，星如雨。宝马雕车香满路。凤箫声动，玉壶光转，一夜鱼龙舞。蛾儿雪柳黄金缕，笑语盈盈暗香去。众里寻他千百度，蓦然回首，那人却在，灯火阑珊处。'],
+  ['h','扬州慢（淮左名都）','宋·姜夔','淮左名都，竹西佳处，解鞍少驻初程。过春风十里，尽荠麦青青。自胡马窥江去后，废池乔木，犹厌言兵。渐黄昏，清角吹寒，都在空城。杜郎俊赏，算而今重到须惊。纵豆蔻词工，青楼梦好，难赋深情。二十四桥仍在，波心荡冷月无声。念桥边红药，年年知为谁生。'],
+  ['h','长亭送别【正宫·端正好】','元·王实甫','碧云天，黄花地，西风紧，北雁南飞。晓来谁染霜林醉，总是离人泪。'],
+  ['h','朝天子·咏喇叭','明·王磐','喇叭，唢呐，曲儿小腔儿大。官船来往乱如麻，全仗你抬声价。军听了军愁，民听了民怕。哪里去辨甚么真共假。眼见的吹翻了这家，吹伤了那家，只吹的水尽鹅飞罢。'],
+];
+
+
+/* 整首诗按句号断句：一句（可含数个小句）= 一道题 */
+const SENT_SPLIT = /[。？！]/;
+const CLAUSE_SPLIT = /[，、；：]/;
+const POEM_SENTS = POEMS.map(p => p[3].split(SENT_SPLIT).map(s => s.trim()).filter(Boolean));
+
+const ENTRIES = [];
+const ANSWER_SEEN = new Set();
+POEMS.forEach((poem, pi) => {
+  const [stage, title, author] = poem;
+  POEM_SENTS[pi].forEach((sent, si) => {
+    const clauses = sent.split(CLAUSE_SPLIT).filter(Boolean);
+    if (clauses.length < 2) return;              /* 单句无上句下句，不出题 */
+    if (clauses.some(c => c.length < 2)) return;   /* 剔掉「鹅」这类一字句 */
+    const answer = clauses.join('');
+    if (answer.length < 8) return;
+    if (ANSWER_SEEN.has(answer)) return;
+    ANSWER_SEEN.add(answer);
+    const five = clauses.length === 2 && clauses.every(c => c.length === 5);
+    const seven = clauses.length === 2 && clauses.every(c => c.length === 7);
+    ENTRIES.push({
+      pi, si, stage, title, author, clauses, answer,
+      a: clauses[0], b: clauses.slice(1).join(''),
+      type: five ? '5' : seven ? '7' : 'mix', n: answer.length
+    });
+  });
+});
+
+/* ---------- 基础工具 ---------- */
+const LS_KEY = 'xunhualing.v2';
+const MIN_LEN = 8;               /* 字数过短的句组（如「喇叭，唢呐」）不入题 */
+const $ = (id) => document.getElementById(id);
+const normText = (s) => [...(s || '')].filter(ch => /[\u3400-\u9fff]/.test(ch)).join('');
+const TYPE_LABEL = { 5: '五言之令', 7: '七言之令', mix: '混合模式' };
+
+/* 常见异体写法归一，便于判字时对得上 */
+const VARIANT = { '惟': '唯', '佩': '珮', '消': '销', '濛': '蒙', '瞳': '曈', '珍': '真' };
+
+/* ---------- 存档 ---------- */
+function blankRound() { return { ei: -1, logs: [], done: false, hints: 0 }; }
+function defaultStore() {
+  return {
+    type: '5',
+    scope: { p: true, m: true, h: true, off: [] },
+    rounds: { '5': blankRound(), '7': blankRound(), mix: blankRound() },
+    stats: { played: 0, won: 0 }
+  };
+}
+function loadStore() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return defaultStore();
+    const p = JSON.parse(raw);
+    const base = defaultStore();
+    const rounds = base.rounds;
+    if (p.rounds) ['5', '7', 'mix'].forEach(t => { if (p.rounds[t]) rounds[t] = Object.assign(blankRound(), p.rounds[t]); });
+    return {
+      type: TYPE_LABEL[p.type] ? p.type : '5',
+      scope: Object.assign(base.scope, p.scope || {}),
+      rounds,
+      stats: Object.assign(base.stats, p.stats || {})
+    };
+  } catch (e) { return defaultStore(); }
+}
+let store = loadStore();
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(store)); } catch (e) {} }
+
+/* ---------- 题池 ---------- */
+function poolIdx(type) {
+  const sc = store.scope;
+  const out = [];
+  for (let i = 0; i < ENTRIES.length; i++) {
+    const e = ENTRIES[i];
+    if (e.n < MIN_LEN) continue;
+    if (type !== 'mix' && e.type !== type) continue;   /* 混合模式收五言、七言、杂言全部 */
+    if (!sc[e.stage]) continue;
+    if (sc.off.indexOf(e.pi) >= 0) continue;
+    out.push(i);
+  }
+  return out;
+}
+function scopePoolIdx() { return poolIdx(store.type); }
+function curRound() { return store.rounds[store.type]; }
+function answerOf(i) { return ENTRIES[i]; }
+
+/* ---------- 出题 ---------- */
+function startRound(type, silent) {
+  const pool = poolIdx(type);
+  if (!pool.length) {
+    store.rounds[type] = blankRound();
+    save();
+    if (!silent) toast('当前范围里没有可出的题，请放宽题库范围');
+    return false;
+  }
+  const prev = store.rounds[type].ei;
+  let pick = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1 && pick === prev) {
+    pick = pool[(pool.indexOf(pick) + 1) % pool.length];
+  }
+  store.rounds[type] = blankRound();
+  store.rounds[type].ei = pick;
+  save();
+  return true;
+}
+function ensureRound() {
+  const r = curRound();
+  const pool = scopePoolIdx();
+  if (r.ei < 0 || pool.indexOf(r.ei) < 0) {
+    if (!startRound(store.type, true)) return false;
+    return true;
+  }
+  return true;
+}
+
+/* ---------- 判字 ---------- */
+function judge(answer, guess) {
+  /* 猜测字数不受限：逐位比到重合处，多余或不足的字照样给含字/排除 */
+  const marks = new Array(guess.length).fill('miss');
+  const rest = new Map();
+  for (let i = 0; i < answer.length; i++) {
+    if (guess[i] === answer[i]) marks[i] = 'exact';
+    else rest.set(answer[i], (rest.get(answer[i]) || 0) + 1);
+  }
+  for (let i = 0; i < guess.length; i++) {
+    if (marks[i] === 'exact') continue;
+    const c = guess[i], k = rest.get(c);
+    if (k > 0) { marks[i] = 'near'; rest.set(c, k - 1); }
+  }
+  return marks;
+}
+
+/* ---------- 字表状态 ---------- */
+function charStatus() {
+  const map = new Map();
+  const rank = { exact: 3, near: 2, miss: 1 };
+  curRound().logs.forEach(log => {
+    log.marks.forEach((m, i) => {
+      const c = log.guess[i];
+      const old = map.get(c);
+      if (!old || rank[m] > rank[old]) map.set(c, m);
+    });
+  });
+  return map;
+}
+function poolChars() {
+  const pool = scopePoolIdx();
+  const freq = new Map();
+  pool.forEach(i => {
+    const e = ENTRIES[i];
+    for (const ch of e.answer) freq.set(ch, (freq.get(ch) || 0) + 1);
+  });
+  return [...freq.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], 'zh')).map(e => e[0]);
+}
+
+/* ---------- 渲染 ---------- */
+function tiles(chars, marks, n, animate) {
+  let html = '<div class="line">';
+  for (let i = 0; i < n; i++) {
+    const c = chars && chars[i] ? chars[i] : '';
+    const m = marks ? marks[i] : '';
+    const d = animate ? ` style="animation-delay:${i * 18}ms"` : '';
+    html += `<span class="tile ${m || 'ghost'}${animate ? ' flip' : ''}"${d}>${c}</span>`;
+  }
+  return html + '</div>';
+}
+function renderBoard() {
+  const r = curRound();
+  const board = $('board');
+  if (r.ei < 0) { board.innerHTML = `<div class="board-empty">不限次数<br>逐字寻回这一句</div>`; return; }
+  if (!r.logs.length) { board.innerHTML = `<div class="board-empty">不限次数 · 本题 ${answerOf(r.ei).n} 字<br>落笔一句，逐字见色</div>`; return; }
+  const newest = r.logs.length - 1;
+  board.innerHTML = r.logs.map((log, i) => {
+    const ex = log.marks.filter(m => m === 'exact').length;
+    const nr = log.marks.filter(m => m === 'near').length;
+    return `<div class="guess">
+      <div class="guess-meta"><span>第 ${i + 1} 次</span><span>${log.guess.length} 字</span><span class="hit">正 ${ex}</span><span class="near">含 ${nr}</span></div>
+      ${tiles(log.guess, log.marks, log.guess.length, i === newest)}
+    </div>`;
+  }).join('');
+  const wrap = $('boardWrap');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+function renderMeta() {
+  const mix = store.type === 'mix';
+  const r = curRound(), e = r.ei >= 0 ? answerOf(r.ei) : null;
+  const pool = scopePoolIdx();
+  $('triesNum').textContent = r.logs.length;
+  $('modeName').textContent = TYPE_LABEL[store.type];
+  const stages = ['p', 'm', 'h'].filter(s => store.scope[s]).map(s => STAGE_NAME[s]).join('、') || '未选学段';
+  $('poolInfo').textContent = `题池 ${pool.length} 题 · ${stages}`;
+  $('charStat').textContent = `题池 ${pool.length} 题 · ${poolChars().length} 字`;
+
+  const n = e ? e.n : (store.type === '5' ? 10 : store.type === '7' ? 14 : 0);
+  $('counterTip').textContent = !e ? '请先在「题库范围」里选择学段'
+    : mix ? `混合模式 · 本题 ${n} 字，长短随意` : `本题 ${n} 字 · 标点忽略`;
+  $('hintText').textContent = !e ? '本题出自 —'
+    : r.hints === 0 ? '本题出自 —'
+    : r.hints === 1 ? `出自 ${e.author}`
+    : `篇名《${e.title}》`;
+  const hb = $('hintBtn');
+  hb.disabled = !e || r.hints >= 2;
+  hb.textContent = r.hints === 0 ? '求一提示' : r.hints === 1 ? '再提示 · 篇名' : '提示已尽';
+  $('skipBtn').disabled = !e;
+
+  $('guess').disabled = !e;
+  $('submitBtn').disabled = !e;
+  $('guess').placeholder = !e ? '当前范围无可出之题'
+    : mix ? '任意字数，落笔判色' : `输入 ${n} 字，落笔判色`;
+  $('guess').maxLength = e ? (mix ? 40 : n + 12) : 40;
+  renderPreview();
+}
+let suppressSuggest = false;
+function renderPreview() {
+  const r = curRound();
+  if (r.ei < 0) { $('preview').innerHTML = ''; $('suggest').innerHTML = ''; return; }
+  const n = answerOf(r.ei).n;
+  const mix = store.type === 'mix';
+  const raw = normText($('guess').value);
+  const shown = mix ? raw : raw.slice(0, n);
+  $('preview').innerHTML = shown ? tiles(shown, null, shown.length, false) : '';
+  const el = $('charCount');
+  el.textContent = mix ? raw.length + ' 字 · 本题 ' + n + ' 字' : raw.length + ' / ' + n;
+  el.classList.toggle('full', mix ? false : raw.length === n);
+  if (suppressSuggest) { $('suggest').innerHTML = ''; suppressSuggest = false; }
+  else renderSuggest(raw);
+}
+
+/* 输入三字以上时，题池里与它相近的句子 */
+function renderSuggest(raw) {
+  const box = $('suggest');
+  const r = curRound();
+  const n = r.ei < 0 ? 0 : answerOf(r.ei).n;
+  if (!n || raw.length < 3) { box.innerHTML = ''; return; }
+  const starts = [], inner = [];
+  const mix = store.type === 'mix';
+  for (const i of scopePoolIdx()) {
+    const e = ENTRIES[i];
+    if (!mix && e.n !== n) continue;
+    const ans = e.answer;
+    if (ans.indexOf(raw) < 0) continue;
+    if (ans.startsWith(raw)) { if (starts.length < 4) starts.push(ans); }
+    else if (inner.length < 2) inner.push(ans);
+  }
+  const list = starts.concat(inner);
+  if (!list.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<span class="sug-label">相近句</span>' +
+    list.map(a => `<button class="sug" type="button">${a}</button>`).join('');
+  [...box.querySelectorAll('.sug')].forEach(btn => btn.addEventListener('click', () => {
+    $('guess').value = btn.textContent;
+    suppressSuggest = true;
+    renderPreview();
+    $('guess').focus();
+  }));
+}
+function renderChars() {
+  const grid = $('charGrid');
+  if (!grid) return;
+  const status = charStatus();
+  const q = normText($('charSearch').value);
+  const onlyUsed = $('onlyUsed').checked;
+  let c = { exact: 0, near: 0, miss: 0 };
+  status.forEach(v => c[v]++);
+  $('sumExact').textContent = c.exact;
+  $('sumNear').textContent = c.near;
+  $('sumMiss').textContent = c.miss;
+  const chars = poolChars();
+  const shown = chars.filter(ch => {
+    if (onlyUsed && !status.has(ch)) return false;
+    if (q && q.indexOf(ch) < 0) return false;
+    return true;
+  });
+  grid.innerHTML = shown.length
+    ? shown.map(ch => `<span class="cc ${status.get(ch) || ''}">${ch}</span>`).join('')
+    : '<div style="grid-column:1/-1;font-size:12.5px;color:var(--ink-faint);padding:14px 2px">无匹配的字</div>';
+}
+function renderAll() {
+  ensureRound();
+  renderMeta();
+  renderBoard();
+  renderChars();
+  [...document.querySelectorAll('.type-chip')].forEach(b => b.classList.toggle('active', b.dataset.type === store.type));
+}
+
+/* ---------- 提示条 ---------- */
+let toastTimer = null;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+/* ---------- 落笔 ---------- */
+let busy = false;
+function submitGuess() {
+  if (busy) return;
+  const r = curRound();
+  if (r.ei < 0) { toast('请先在「题库范围」里选择题池'); return; }
+  if (r.done) { toast('本题已揭晓，点「再来一句」继续'); return; }
+  const e = answerOf(r.ei);
+  const answer = e.answer;
+  const guess = [...normText($('guess').value)].map(ch => VARIANT[ch] || ch).join('');
+  if (!guess.length) { toast('先落笔一两字'); return; }
+  if (store.type !== 'mix' && guess.length !== answer.length) {
+    toast(guess.length < answer.length
+      ? `还差 ${answer.length - guess.length} 字（本题 ${answer.length} 字）`
+      : `多出 ${guess.length - answer.length} 字，本题只有 ${answer.length} 字`);
+    return;
+  }
+  busy = true;
+  r.logs.push({ guess, marks: judge(answer, guess) });
+  $('guess').value = '';
+  save();
+  renderMeta(); renderBoard(); renderChars(); renderPreview();
+  if (guess === answer) { finish(true); }
+  setTimeout(() => { busy = false; }, 110);
+}
+
+/* ---------- 结算 ---------- */
+function finish(won) {
+  const r = curRound();
+  const e = answerOf(r.ei);
+  r.done = true;
+  store.stats.played += 1;
+  if (won) store.stats.won += 1;
+  save();
+  renderMeta();
+  openResult(won, e, r);
+}
+function shareText(r, won) {
+  const e = answerOf(r.ei);
+  const lines = r.logs.slice(-10).map(log =>
+    log.marks.map(m => m === 'exact' ? '●' : m === 'near' ? '◐' : '○').join('')
+  );
+  return `寻花令 · ${TYPE_NAME[store.type]} ${won ? '寻得' : '揭晓'} ${r.logs.length} 次${r.hints ? ' · 提示' + r.hints : ''}\n` + lines.join('\n');
+}
+function copyText(t) {
+  const done = () => toast('已复制，可粘贴分享');
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(t).then(done, () => { legacyCopy(t); done(); });
+  } else { legacyCopy(t); done(); }
+}
+function legacyCopy(t) {
+  const ta = document.createElement('textarea');
+  ta.value = t;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+/* ---------- 浮层 ---------- */
+let overlayTimer = null;
+function openSheet(html) {
+  clearTimeout(toastTimer);
+  $('toast').classList.remove('show');
+  $('sheetBody').innerHTML = html;
+  $('overlay').hidden = false;
+  requestAnimationFrame(() => $('overlay').classList.add('open'));
+}
+function closeSheet() {
+  $('overlay').classList.remove('open');
+  overlayTimer = setTimeout(() => { $('overlay').hidden = true; }, 240);
+}
+
+function restartIfDone() {
+  if (!curRound().done) return;
+  if (!startRound(store.type, true)) return;
+  renderAll();
+}
+
+function openResult(won, e, r) {
+  const bars = r.logs.length <= 10
+    ? '<div class="barstack">' + r.logs.map(log =>
+        '<div class="bars">' + log.marks.map(m => `<span class="b ${m}"></span>`).join('') + '</div>'
+      ).join('') + '</div>'
+    : '';
+  openSheet(`
+    <p class="kicker">${won ? '寻花得令' : '答案已示'}</p>
+    <h2 id="sheetTitle">${won ? '这一句，寻到了' : '这一句的答案'}</h2>
+    <p class="verse-lines">${e.clauses.length === 2
+      ? `${e.clauses[0]}，<br>${e.clauses[1]}。`
+      : `${e.clauses.join('，')}。`}</p>
+    <p class="src">${e.author}《${e.title}》 · ${TYPE_NAME[e.type]} · ${STAGE_NAME[e.stage]}卷</p>
+    <p class="msg">${won
+      ? `第 ${r.logs.length} 次落笔寻回此句${r.hints ? `，用去提示 ${r.hints} 次` : '，未用提示'}。`
+      : `已落笔 ${r.logs.length} 次后揭晓。`}</p>
+    ${bars}
+    <details class="fullwrap">
+      <summary>看全篇 · 共 ${POEM_SENTS[e.pi].length} 句</summary>
+      <p class="fullpoem">${POEM_SENTS[e.pi].map((l, idx) =>
+        (idx === e.si ? `<b>${l}</b>` : l)
+      ).join('。')}。</p>
+    </details>
+    <div class="sheet-actions">
+      <button class="btn primary" id="againBtn">再来一句</button>
+      <button class="btn" id="shareBtn">复制战绩</button>
+      <button class="btn" id="closeResult">收起</button>
+    </div>
+  `);
+  $('againBtn').addEventListener('click', () => {
+    closeSheet();
+    startRound(store.type);
+    renderAll();
+    $('guess').focus();
+  });
+  $('shareBtn').addEventListener('click', () => copyText(shareText(r, won)));
+  $('closeResult').addEventListener('click', () => { closeSheet(); restartIfDone(); });
+}
+
+function openHelp() {
+  openSheet(`
+    <p class="kicker">玩法</p>
+    <h2 id="sheetTitle">寻花令 · 说明</h2>
+    <ul class="rules">
+      <li><span class="n">一</span><span>三个入口：五言（两句十字）、七言（两句十四字）、混合（五言七言词曲混在一池，每题字数不定）。断句依原文句读：一个整句即一题，上句与下句不会错配；词曲一韵句常含数小句，也整句作答。标点不计；混合模式下落笔几个字都行，字不齐也照常判色。</span></li>
+      <li><span class="n">二</span><span>不限次数，直到寻回为止。每次落笔逐字比对：墨绿为正位，赭黄为此字在句中他处，灰色为此句无此字。</span></li>
+      <li><span class="n">三</span><span>输入不限于题库所收的句子：五言、七言须字数相符，混合模式则长短随意，都能落笔并按字判色，可用它试探与排除。</span></li>
+      <li><span class="n">四</span><span>右侧字表收当前题池出现的全部汉字，随落笔标记正位、含字、排除；改体裁或改范围时字表随之更换。</span></li>
+      <li><span class="n">五</span><span>「求一提示」分两级：先给朝代与作者，再给篇名；「看答案」直接揭晓，再换一题。</span></li>
+      <li><span class="n">六</span><span>输入三字以上时，输入框下方会列出题池里与它相近的句子，点一下即可整句填入；此提示可以不用，自己逐字去试。</span></li>
+      <li><span class="n">七</span><span>题库为 ${POEMS.length} 首诗的全文（${ENTRIES.length} 组相邻句），取自小学 75 首、初中诗词曲、高中课标诗词，全部内置于本页，断网可用；「看答案」时还可展开全篇。</span></li>
+    </ul>
+    <div class="legend" style="margin-top:14px">
+      <span><i class="dot exact"></i>正位：字与位置都对</span>
+      <span><i class="dot near"></i>含字：此字在句中别处</span>
+      <span><i class="dot miss"></i>排除：此句无此字</span>
+    </div>
+    <div class="sheet-actions"><button class="btn primary" id="closeHelp">知道了</button></div>
+  `);
+  $('closeHelp').addEventListener('click', closeSheet);
+}
+
+/* ---------- 题库范围 ---------- */
+function openScope() {
+  const r = curRound();
+  const st = store.scope;
+  const cur = TYPE_NAME[store.type];
+  const poemGroups = { p: [], m: [], h: [] };
+  POEMS.forEach((p, i) => poemGroups[p[0]].push(i));
+  const chipCount = (pi) => ENTRIES.filter(e => e.pi === pi && e.n >= MIN_LEN).length;
+  const groupHTML = ['p', 'm', 'h'].map(s => {
+    const on = st[s];
+    const chips = poemGroups[s].map(pi => {
+      const poem = POEMS[pi];
+      const off = st.off.indexOf(pi) >= 0;
+      return `<button class="poem-chip ${on && !off ? 'on' : 'off'}" data-poem="${pi}" ${chipCount(pi) ? '' : 'disabled'}>${poem[1]}</button>`;
+    }).join('');
+    return `<div class="poem-group">
+      <div class="gt">${STAGE_NAME[s]} · ${poemGroups[s].length} 首</div>
+      <div class="poem-list">${chips}</div>
+    </div>`;
+  }).join('');
+  const pool = scopePoolIdx();
+  openSheet(`
+    <p class="kicker">范围</p>
+    <h2 id="sheetTitle">题库范围</h2>
+    <p class="scope-sum">当前 ${cur}题池 <b>${pool.length}</b> 题 · ${poolChars().length} 字${pool.length ? '' : '（无可出之题）'}</p>
+    <div class="stage-row">
+      ${['p', 'm', 'h'].map(s => `<button class="stage-opt ${st[s] ? 'active' : ''}" data-stage="${s}">${STAGE_NAME[s]}<small>${st[s] ? '已纳入' : '未纳入'}</small></button>`).join('')}
+    </div>
+    <div class="scope-tools">
+      <button class="linkbtn" id="scopeAll">全选</button>
+      <button class="linkbtn" id="scopeNone">全不选篇目</button>
+      <span class="scope-sum" style="margin:0">点篇名可单独取舍</span>
+    </div>
+    <div class="poem-scroll">${groupHTML}</div>
+    <div class="sheet-actions"><button class="btn primary" id="scopeDone">用这个范围</button></div>
+  `);
+  const refresh = () => {
+    /* 面板内就地更新，避免整页重排 */
+    const r2 = curRound();
+    const pool2 = scopePoolIdx();
+    document.querySelectorAll('.stage-opt').forEach(btn => {
+      const s = btn.dataset.stage;
+      btn.classList.toggle('active', !!st[s]);
+      btn.querySelector('small').textContent = st[s] ? '已纳入' : '未纳入';
+    });
+    document.querySelectorAll('.poem-chip').forEach(chip => {
+      const pi = +chip.dataset.poem;
+      const s = POEMS[pi][0];
+      chip.classList.toggle('on', st[s] && st.off.indexOf(pi) < 0);
+      chip.classList.toggle('off', !(st[s] && st.off.indexOf(pi) < 0));
+    });
+    document.querySelector('.scope-sum').innerHTML =
+      `当前 ${cur}题池 <b>${pool2.length}</b> 题 · ${poolChars().length} 字${pool2.length ? '' : '（无可出之题）'}`;
+    renderMeta(); renderChars();
+  };
+  document.querySelectorAll('.stage-opt').forEach(btn => btn.addEventListener('click', () => {
+    const s = btn.dataset.stage;
+    if (st[s] && ['p', 'm', 'h'].filter(x => st[x]).length === 1) { toast('至少留一个学段'); return; }
+    st[s] = !st[s];
+    save(); refresh();
+  }));
+  document.querySelectorAll('.poem-chip').forEach(chip => chip.addEventListener('click', () => {
+    const pi = +chip.dataset.poem;
+    const idx = st.off.indexOf(pi);
+    if (idx >= 0) st.off.splice(idx, 1); else st.off.push(pi);
+    save(); refresh();
+  }));
+  $('scopeAll').addEventListener('click', () => { st.p = st.m = st.h = true; st.off = []; save(); refresh(); });
+  $('scopeNone').addEventListener('click', () => {
+    st.off = POEMS.map((_, i) => i); save(); refresh();
+  });
+  $('scopeDone').addEventListener('click', () => {
+    closeSheet();
+    const pool = scopePoolIdx();
+    if (!pool.length) {
+      toast('当前范围无题，请至少选一首');
+      return;
+    }
+    if (curRound().ei < 0 || pool.indexOf(curRound().ei) < 0) startRound(store.type, true);
+    renderAll();
+  });
+}
+
+/* ---------- 体裁切换 ---------- */
+function switchType(t) {
+  if (t === store.type) return;
+  store.type = t;
+  save();
+  if (curRound().ei < 0 || scopePoolIdx().indexOf(curRound().ei) < 0) startRound(t, true);
+  renderAll();
+  $('guess').focus();
+}
+
+/* ---------- 事件 ---------- */
+$('guessForm').addEventListener('submit', (ev) => { ev.preventDefault(); submitGuess(); });
+$('guess').addEventListener('input', renderPreview);
+$('charSearch').addEventListener('input', renderChars);
+$('onlyUsed').addEventListener('change', renderChars);
+document.querySelectorAll('.type-chip').forEach(b => b.addEventListener('click', () => switchType(b.dataset.type)));
+$('helpBtn').addEventListener('click', openHelp);
+$('scopeBtn').addEventListener('click', openScope);
+$('overlay').addEventListener('click', (ev) => {
+  if (ev.target.id !== 'overlay') return;
+  closeSheet();
+  if (curRound().done) restartIfDone();
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape' || !$('overlay').classList.contains('open')) return;
+  closeSheet();
+  if (curRound().done) restartIfDone();
+});
+$('hintBtn').addEventListener('click', () => {
+  const r = curRound();
+  if (r.ei < 0 || r.hints >= 2) return;
+  r.hints += 1;
+  save();
+  renderMeta();
+  const e = answerOf(r.ei);
+  toast(r.hints === 1 ? `出自 ${e.author}，篇名可再提示一次` : `篇名《${e.title}》`);
+});
+$('skipBtn').addEventListener('click', () => {
+  const r = curRound();
+  if (r.ei < 0) return;
+  if (!r.done) {
+    r.done = true;
+    store.stats.played += 1;
+    save();
+    renderMeta();
+  }
+  openResult(false, answerOf(r.ei), r);
+});
+
+/* ---------- 启动 ---------- */
+renderAll();
+if (!scopePoolIdx().length) startRound(store.type, true);
+renderAll();
+</script>
+</body>
+</html>
